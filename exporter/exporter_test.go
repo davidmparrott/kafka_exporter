@@ -19,28 +19,19 @@ func NewTestConfig() *sarama.Config {
 	return config
 }
 
-func NewKafkaOpts() Options {
-	return Options{
-		Uri:                  []string{"localhost:9092"},
-		KafkaVersion:         sarama.V2_0_0_0.String(),
-		MaxOffsets:           10,
-		PruneIntervalSeconds: 10,
-	}
-}
-
 var testMessage = sarama.StringEncoder("foo")
-var expectedValues = map[string]float64{
-	"kafka_topic_partitions":                           1,
-	"kafka_topic_partition_leader":                     2,
-	"kafka_topic_partition_current_offset":             456,
-	"kafka_topic_partition_oldest_offset":              123,
-	"kafka_topic_partition_replicas":                   0,
-	"kafka_topic_partition_in_sync_replica":            0,
-	"kafka_topic_partition_leader_is_preferred":        0,
-	"kafka_topic_partition_under_replicated_partition": 0,
-}
 
 func TestMetricsForTopic(t *testing.T) {
+	var expectedValues = map[string]float64{
+		"kafka_topic_partitions":                           1,
+		"kafka_topic_partition_leader":                     2,
+		"kafka_topic_partition_current_offset":             456,
+		"kafka_topic_partition_oldest_offset":              123,
+		"kafka_topic_partition_replicas":                   1,
+		"kafka_topic_partition_in_sync_replica":            1,
+		"kafka_topic_partition_leader_is_preferred":        1,
+		"kafka_topic_partition_under_replicated_partition": 0,
+	}
 
 	fakeBroker := sarama.NewMockBroker(t, 2)
 	fakeBroker.SetHandlerByMap(map[string]sarama.MockResponse{
@@ -68,7 +59,7 @@ func TestMetricsForTopic(t *testing.T) {
 		topicFilter:             regexp.MustCompile("test_topic"),
 		groupFilter:             regexp.MustCompile("test_group"),
 		mu:                      sync.Mutex{},
-		useZooKeeperLag:         false,
+		useZooKeeperLag:         false, // TODO: find a way to mock/fake kazoo to test these metrics
 		zookeeperClient:         nil,
 		nextMetadataRefresh:     time.Now(),
 		metadataRefreshInterval: config.Metadata.RefreshFrequency,
@@ -78,7 +69,7 @@ func TestMetricsForTopic(t *testing.T) {
 		sgChans:                 []chan<- prometheus.Metric{},
 		consumerGroupFetchAll:   true,
 		consumerGroupLagTable:   interpolationMap{mu: sync.Mutex{}},
-		kafkaOpts:               NewKafkaOpts(),
+		kafkaOpts:               Options{},
 		saramaConfig:            config,
 		logger:                  log.NewNopLogger(),
 	}
@@ -111,15 +102,23 @@ func TestMetricsForTopic(t *testing.T) {
 					}
 
 				} else if metricString == topicPartitionReplicas.String() {
-
+					if *testMetric.Gauge.Value != expectedValues["kafka_topic_partition_replicas"] {
+						t.Errorf("incorrect count of partition replicas. Expected %f Got %f", expectedValues["kafka_topic_partition_replicas"], *testMetric.Gauge.Value)
+					}
 				} else if metricString == topicPartitionInSyncReplicas.String() {
-
+					if *testMetric.Gauge.Value != expectedValues["kafka_topic_partition_in_sync_replica"] {
+						t.Errorf("incorrect count of in-sync replicas. Expected %f Got %f", expectedValues["kafka_topic_partition_in_sync_replica"], *testMetric.Gauge.Value)
+					}
 				} else if metricString == topicPartitionUsesPreferredReplica.String() {
-
+					if *testMetric.Gauge.Value != expectedValues["kafka_topic_partition_leader_is_preferred"] {
+						t.Errorf("incorrect value for preferred broker. Expected %f Got %f", expectedValues["kafka_topic_partition_leader_is_preferred"], *testMetric.Gauge.Value)
+					}
 				} else if metricString == topicUnderReplicatedPartition.String() {
-
+					if *testMetric.Gauge.Value != expectedValues["kafka_topic_partition_under_replicated_partition"] {
+						t.Errorf("incorrect value for under-replication. Expected %f Got %f", expectedValues["kafka_topic_partition_under_replicated_partition"], *testMetric.Gauge.Value)
+					}
 				} else {
-					// TODO: unknown metric name
+					t.Errorf("unexpected metric received: %s", metricString)
 				}
 			} else {
 				done <- true
@@ -127,7 +126,7 @@ func TestMetricsForTopic(t *testing.T) {
 			}
 		}
 	}()
-	e.metricsForTopic("test_topic", ch)
+	e.metricsForTopic(ch)
 	close(ch)
 	<-done
 }
