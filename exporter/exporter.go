@@ -36,7 +36,7 @@ var (
 	topicUnderReplicatedPartition            *prometheus.Desc
 	consumergroupCurrentOffset               *prometheus.Desc
 	consumergroupCurrentOffsetSum            *prometheus.Desc
-	consumergroupUncomittedOffsets           *prometheus.Desc
+	consumergroupUncommittedOffsets          *prometheus.Desc
 	consumergroupUncommittedOffsetsSum       *prometheus.Desc
 	consumergroupUncommittedOffsetsZookeeper *prometheus.Desc
 	consumergroupMembers                     *prometheus.Desc
@@ -267,7 +267,7 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 	ch <- topicUnderReplicatedPartition
 	ch <- consumergroupCurrentOffset
 	ch <- consumergroupCurrentOffsetSum
-	ch <- consumergroupUncomittedOffsets
+	ch <- consumergroupUncommittedOffsets
 	ch <- consumergroupUncommittedOffsetsZookeeper
 	ch <- consumergroupUncommittedOffsetsSum
 	ch <- topicPartitionLagMillis
@@ -576,7 +576,7 @@ func (e *Exporter) metricsForConsumerGroup(ch chan<- prometheus.Metric) {
 							}
 							e.mu.Unlock()
 							ch <- prometheus.MustNewConstMetric(
-								consumergroupUncomittedOffsets, prometheus.GaugeValue, float64(lag), group.GroupId, topic, strconv.FormatInt(int64(partition), 10),
+								consumergroupUncommittedOffsets, prometheus.GaugeValue, float64(lag), group.GroupId, topic, strconv.FormatInt(int64(partition), 10),
 							)
 						}
 						ch <- prometheus.MustNewConstMetric(
@@ -808,7 +808,7 @@ func (e *Exporter) initializeMetrics() {
 		[]string{"consumergroup", "topic"}, labels,
 	)
 
-	consumergroupUncomittedOffsets = prometheus.NewDesc(
+	consumergroupUncommittedOffsets = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "consumergroup", "uncommitted_offsets"),
 		"Current Approximate count of uncommitted offsets for a ConsumerGroup at Topic/Partition",
 		[]string{"consumergroup", "topic", "partition"}, labels,
