@@ -8,6 +8,7 @@ require (
 	//github.com/grafana/agent v0.11.0
 	github.com/krallistic/kazoo-go v0.0.0-20170526135507-a15279744f4e
 	github.com/prometheus/client_golang v1.9.0
+	github.com/prometheus/client_model v0.2.0
 	github.com/prometheus/common v0.15.0
 	github.com/rcrowley/go-metrics v0.0.0-20201227073835-cf1acfcdf475
 	github.com/xdg/scram v0.0.0-20180814205039-7eeb5667e42c
